@@ -84,6 +84,7 @@ export interface MosaicState<T extends MosaicKey> {
   mosaicId: string;
 }
 
+export const DocumentContext: React.Context<any> = React.createContext(null);
 export class MosaicWithoutDragDropContext<T extends MosaicKey = string> extends React.PureComponent<
   MosaicProps<T>,
   MosaicState<T>

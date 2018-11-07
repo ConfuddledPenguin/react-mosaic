@@ -42,6 +42,7 @@ import '@blueprintjs/core/lib/css/blueprint.css';
 import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 import '../styles/index.less';
 import './example.less';
+import WindowPortal from './windowPortal';
 
 // tslint:disable-next-line no-var-requires
 const gitHubLogo = require('./GitHub-Mark-Light-32px.png');
@@ -65,6 +66,7 @@ const EMPTY_ARRAY: any[] = [];
 export interface ExampleAppState {
   currentNode: MosaicNode<number> | null;
   currentTheme: Theme;
+  externalWindowOpen: boolean
 }
 
 const NumberMosaic = Mosaic.ofType<number>();
@@ -83,6 +85,7 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
       splitPercentage: 40,
     },
     currentTheme: 'Blueprint',
+    externalWindowOpen: false
   };
 
   render() {
@@ -107,6 +110,29 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
           onChange={this.onChange}
           className={THEMES[this.state.currentTheme]}
         />
+        {
+          this.state.externalWindowOpen &&
+          <WindowPortal>
+            <NumberMosaic
+              renderTile={(count, path) => (
+                <NumberMosaicWindow
+                  additionalControls={count === 3 ? additionalControls : EMPTY_ARRAY}
+                  title={`Window ${count}`}
+                  createNode={this.createNode}
+                  path={path}
+                >
+                  <div className="example-window">
+                    <h1>{`Window ${count}`}</h1>
+                  </div>
+                </NumberMosaicWindow>
+              )}
+              zeroStateView={<MosaicZeroState createNode={this.createNode} />}
+              value={this.state.currentNode}
+              onChange={this.onChange}
+              className={THEMES[this.state.currentTheme]}
+            />
+          </WindowPortal>
+        }
       </div>
     );
   }
@@ -121,6 +147,10 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
     this.setState({
       currentNode: createBalancedTreeFromLeaves(leaves),
     });
+  };
+
+  private openInNewWindow = () => {
+    this.setState({externalWindowOpen: true});
   };
 
   private addToTopRight = () => {
@@ -194,6 +224,12 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
             onClick={this.addToTopRight}
           >
             Add Window to Top Right
+          </button>
+          <button
+            className={classNames(Classes.BUTTON, Classes.iconClass(IconNames.APPLICATIONS))}
+            onClick={this.openInNewWindow}
+          >
+            Open in new window (A React Portal)
           </button>
           <a className="github-link" href="https://github.com/palantir/react-mosaic">
             <img src={gitHubLogo} />

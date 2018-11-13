@@ -37,12 +37,13 @@ import {
 } from '../src';
 
 import { CloseAdditionalControlsButton } from './CloseAdditionalControlsButton';
+import WindowPortal from './windowPortal';
+import MosaicDragDropManagerContext from './MosaicDragDropManagerContext';
 
 import '@blueprintjs/core/lib/css/blueprint.css';
 import '@blueprintjs/icons/lib/css/blueprint-icons.css';
 import '../styles/index.less';
 import './example.less';
-import WindowPortal from './windowPortal';
 
 // tslint:disable-next-line no-var-requires
 const gitHubLogo = require('./GitHub-Mark-Light-32px.png');
@@ -64,9 +65,13 @@ const additionalControls = React.Children.toArray([<CloseAdditionalControlsButto
 const EMPTY_ARRAY: any[] = [];
 
 export interface ExampleAppState {
-  currentNode: MosaicNode<number> | null;
+  currentNodes: {
+    mainWindow: MosaicNode<number> | null,
+    externalWindow: MosaicNode<number> | null,
+  },
   currentTheme: Theme;
-  externalWindowOpen: boolean
+  externalWindowOpen: boolean,
+  mosiacDragDropManagerContext: any
 }
 
 const NumberMosaic = Mosaic.ofType<number>();
@@ -74,79 +79,109 @@ const NumberMosaicWindow = MosaicWindow.ofType<number>();
 
 export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
   state: ExampleAppState = {
-    currentNode: {
-      direction: 'row',
-      first: 1,
-      second: {
-        direction: 'column',
-        first: 2,
-        second: 3,
+    currentNodes: {
+      mainWindow: {
+        direction: 'row',
+        first: 1,
+        second: {
+          direction: 'column',
+          first: 2,
+          second: 3,
+        },
+        splitPercentage: 40,
       },
-      splitPercentage: 40,
+      externalWindow: {
+        direction: 'row',
+        first: 1,
+        second: {
+          direction: 'column',
+          first: 2,
+          second: 3,
+        },
+        splitPercentage: 40, 
+      }
     },
     currentTheme: 'Blueprint',
-    externalWindowOpen: false
+    externalWindowOpen: false,
+    mosiacDragDropManagerContext: null
   };
+  private mainWindowMosaicRef: any = React.createRef();
+
+  componentDidMount() {
+    const mosaic = this.mainWindowMosaicRef.current;
+    const mosiacDragDropManagerContext: any = mosaic.getManager();
+    this.setState({mosiacDragDropManagerContext});
+  }
 
   render() {
     return (
-      <div className="react-mosaic-example-app">
-        {this.renderNavBar()}
-        <NumberMosaic
-          renderTile={(count, path) => (
-            <NumberMosaicWindow
-              additionalControls={count === 3 ? additionalControls : EMPTY_ARRAY}
-              title={`Window ${count}`}
-              createNode={this.createNode}
-              path={path}
-            >
-              <div className="example-window">
-                <h1>{`Window ${count}`}</h1>
-              </div>
-            </NumberMosaicWindow>
-          )}
-          zeroStateView={<MosaicZeroState createNode={this.createNode} />}
-          value={this.state.currentNode}
-          onChange={this.onChange}
-          className={THEMES[this.state.currentTheme]}
-        />
-        {
-          this.state.externalWindowOpen &&
-          <WindowPortal>
-            <NumberMosaic
-              renderTile={(count, path) => (
-                <NumberMosaicWindow
-                  additionalControls={count === 3 ? additionalControls : EMPTY_ARRAY}
-                  title={`Window ${count}`}
-                  createNode={this.createNode}
-                  path={path}
-                >
-                  <div className="example-window">
-                    <h1>{`Window ${count}`}</h1>
-                  </div>
-                </NumberMosaicWindow>
-              )}
-              zeroStateView={<MosaicZeroState createNode={this.createNode} />}
-              value={this.state.currentNode}
-              onChange={this.onChange}
-              className={THEMES[this.state.currentTheme]}
-            />
-          </WindowPortal>
-        }
-      </div>
+      <MosaicDragDropManagerContext.Provider value={this.state.mosiacDragDropManagerContext}>
+        <div className="react-mosaic-example-app">
+          {this.renderNavBar()}
+          <NumberMosaic
+            ref={this.mainWindowMosaicRef}
+            renderTile={(count, path) => (
+              <NumberMosaicWindow
+                additionalControls={count === 3 ? additionalControls : EMPTY_ARRAY}
+                title={`Window ${count}`}
+                createNode={this.createNode}
+                path={path}
+              >
+                <div className="example-window">
+                  <h1>{`Window ${count}`}</h1>
+                </div>
+              </NumberMosaicWindow>
+            )}
+            zeroStateView={<MosaicZeroState createNode={this.createNode} />}
+            value={this.state.currentNodes.mainWindow}
+            onChange={this.onMainWindowChange}
+            className={THEMES[this.state.currentTheme]}
+          />
+          {
+            this.state.externalWindowOpen &&
+            <WindowPortal>
+              <NumberMosaic
+                renderTile={(count, path) => (
+                  <NumberMosaicWindow
+                    additionalControls={count === 3 ? additionalControls : EMPTY_ARRAY}
+                    title={`Window ${count}`}
+                    createNode={this.createNode}
+                    path={path}
+                  >
+                    <div className="example-window">
+                      <h1>{`Window ${count}`}</h1>
+                    </div>
+                  </NumberMosaicWindow>
+                )}
+                zeroStateView={<MosaicZeroState createNode={this.createNode} />}
+                value={this.state.currentNodes.externalWindow}
+                onChange={this.onExternalWindowChange}
+                className={THEMES[this.state.currentTheme]}
+              />
+            </WindowPortal>
+          }
+        </div>
+      </MosaicDragDropManagerContext.Provider>
     );
   }
 
-  private onChange = (currentNode: MosaicNode<number> | null) => this.setState({ currentNode });
+  private onMainWindowChange = (currentNode: MosaicNode<number> | null) => {
+    const currentNodes = {...this.state.currentNodes, mainWindow: currentNode};
+    this.setState({currentNodes});
+  }
+
+  private onExternalWindowChange = (currentNode: MosaicNode<number> | null) => {
+    const currentNodes = {...this.state.currentNodes, externalWindow: currentNode};
+    this.setState({currentNodes});
+  }
 
   private createNode = () => ++windowCount;
 
   private autoArrange = () => {
-    const leaves = getLeaves(this.state.currentNode);
+    const leaves = getLeaves(this.state.currentNodes.mainWindow);
 
-    this.setState({
-      currentNode: createBalancedTreeFromLeaves(leaves),
-    });
+    const currentNodes = {...this.state.currentNodes, mainWindow: createBalancedTreeFromLeaves(leaves)};
+    this.setState({currentNodes});
   };
 
   private openInNewWindow = () => {
@@ -154,7 +189,7 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
   };
 
   private addToTopRight = () => {
-    let { currentNode } = this.state;
+    let currentNode = this.state.currentNodes.mainWindow;
     if (currentNode) {
       const path = getPathToCorner(currentNode, Corner.TOP_RIGHT);
       const parent = getNodeAtPath(currentNode, dropRight(path)) as MosaicParent<number>;
@@ -187,7 +222,8 @@ export class ExampleApp extends React.PureComponent<{}, ExampleAppState> {
       currentNode = ++windowCount;
     }
 
-    this.setState({ currentNode });
+    const currentNodes = {...this.state.currentNodes, mainWindow: currentNode};
+    this.setState({ currentNodes });
   };
 
   private renderNavBar() {

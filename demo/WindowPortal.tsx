@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import MosaicDragDropManagerContext from './MosaicDragDropManagerContext';
+
 function copyStyles(sourceDoc: Document, targetDoc: Document) {
     [].slice.call(sourceDoc.styleSheets).forEach((ss: StyleSheet) => {
         const styleSheet: CSSStyleSheet = ss as CSSStyleSheet;
@@ -28,6 +30,8 @@ export interface WindowPortalState {
 }
 
 export default class WindowPortal extends React.PureComponent<{}, WindowPortalState> {
+    static contextType = MosaicDragDropManagerContext;
+
     private externalWindow: Window | null = null;
     private containerEl: Element = document.createElement('div');
 
@@ -53,7 +57,7 @@ export default class WindowPortal extends React.PureComponent<{}, WindowPortalSt
         copyStyles(document, this.externalWindow.document);
 
         //listen for the main window being closed
-        window.addEventListener("beforeunload", (e) => {
+        window.addEventListener("beforeunload", () => {
             this.closeExternalWindow();
         }, false);
 
@@ -62,10 +66,15 @@ export default class WindowPortal extends React.PureComponent<{}, WindowPortalSt
             // this.props.closeWindowPortal(); TODO
         });
 
+        const manager = this.context;
+        manager.getBackend().addEventListeners(this.externalWindow);
+
         this.setState({externalWindow: this.externalWindow});
     }
 
     componentWillUnmount() {
+        const manager = this.context;
+        manager.getBackend().removeEventListeners(this.externalWindow);
         this.closeExternalWindow();
     }
 
